@@ -1,21 +1,21 @@
-; Релизный загрузчик компилятора.
-; Грузит упакованный код компилятора.
+; Compiler bootloader for loading and running compiler.
+; Loads compressed compiler code and runs it.
 ;
 
 
 
-; описание ds xx
+; Macro definition ds xx
 %imacro ds 1
 times %1 db 0
 %endmacro
 
 
 
-; данные файла "cc.bin"
-dss_page equ	802Ah			; адрес ячейки page_dss
+; Data from file "cc.bin"
+dss_page equ	802Ah			; Address of cell page_dss
 
 
-; порты страниц
+; Memory pages
 PAGE_0	equ	82h
 PAGE_1	equ	0A2h
 PAGE_3	equ	0E2h
@@ -25,21 +25,21 @@ PAGE_3	equ	0E2h
 	org	0A200h
 
 	db	"EXE"			; exe ID
-	db	0			; exe версия
-	dw	512			; 512, мл. смещ. кода
-	dw	0			; ст. смещ. кода
-	dw	end_loader - entry	; end-beg, первичный загрузчик
-	dw	0,0,0			; резерв
-	dw	entry			; адрес загрузки кода
-	dw	entry			; адрес передачи управления
-	dw	0BF00h			; адрес стека
+	db	0			; exe version
+	dw	512			; 512, byte size unit
+	dw	0			; stat size unit
+	dw	end_loader - entry	; end-beg, primary bootloader
+	dw	0,0,0			; reserved
+	dw	entry			; address bootload code
+	dw	entry			; address control transfer
+	dw	0BF00h			; stack address
 	ds	490
 
 
-entry:	; очистить буфер клавы
+entry:	; Clear keyboard buffer
 	ld	bc,3135h
 	rst	10h
-	; сохр. номер страницы DSS
+	; Save current memory pages DSS
 	in	a,(PAGE_0)
 	ld	(_dss),a
 	in	a,(PAGE_1)
@@ -49,51 +49,51 @@ entry:	; очистить буфер клавы
 	in	a,(89h)
 	ld	(port89),a
 	;
-	ld	(L0080+1),ix		; сохр. адрес ком-строки
+	ld	(L0080+1),ix		; save command string address
 	ld	a,(ix-3)
-	ld	(hFile),a		; сохр. тек. дескриптор
-	ld	hl,Title		; титл программы
+	ld	(hFile),a		; save current descriptor
+	ld	hl,Title		; program title
 	ld	c,5Ch
 	rst	10h
-	; выделить 3 стр. памяти
+	; Allocate 3 blocks of memory
 	ld	bc,033Dh
 	rst	10h
 	jr	nc,next1		; Ok
-no_mem:	ld	hl,no_space		; нет памяти
+no_mem:	ld	hl,no_space		; no memory
 	ld	c,5Ch
 	rst	10h
 	ld	bc,0FF41h		; exit
 	rst	10h
 
-next1:	ld	(block),a		; хэндл выдел. блока памяти
-	; получить список страниц
+next1:	ld	(block),a		; handle allocated memory block
+	; Get list of memory pages
 	ld	hl,page0
 	ld	c,0C5h
 	rst	08h
 	;
-	; выделить 1 стр. памяти
+	; Allocate 1 block of memory
 	ld	bc,013Dh
 	rst	10h
-	jr	c,no_mem		; нет памяти
+	jr	c,no_mem		; no memory
 	ld	(tmp_page),a
-	; подкл. ее в #C000
+	; Switch it to #C000
 	out	(PAGE_3),a
 	;
-	; закрыть порт #89
+	; Close port #89
 	ld	a,0C0h
 	out	(89h),a
 	;------------------------- 1 -----------------------------------
-	; загрузить 1-ю часть
-	ld	hl,0C000h		; куда
-	ld	de,part2-part1		; длина блока
+	; Load 1st part
+	ld	hl,0C000h		; where
+	ld	de,part2-part1		; block size
 	ld	a,(hFile)
-	ld	c,13h			; чтение файла
+	ld	c,13h			; read file
 	rst	10h
 	jp	c,disk_error
-	; подкл. 0 стр. в #4000
+	; Switch page 0 to #4000
 	ld	a,(page0)
 	out	(PAGE_1),a
-	; очистить область #0000..#0100
+	; Clear region #0000..#0100
 	ld	hl,4000h
 loop:	xor	a
 	ld	(hl),a
@@ -105,68 +105,68 @@ loop:	xor	a
 	ld	hl,4DEDh		; "reti"
 	;ld	hl,00C9h		; "ret"
 	ld	(4038h),hl
-	; распаковать 1-ю часть
-	ld	hl,0C000h		; откуда
-	ld	de,4100h		; куда
+	; Decompress 1st part
+	ld	hl,0C000h		; from where
+	ld	de,4100h		; to where
 	call	dehrust
 	;------------------------- 2 -----------------------------------
-	ld	hl,0C000h		; куда
-	ld	de,part3-part2		; длина блока
+	ld	hl,0C000h		; where
+	ld	de,part3-part2		; block size
 	ld	a,(hFile)
-	ld	c,13h			; чтение файла
+	ld	c,13h			; read file
 	rst	10h
 	jp	c,disk_error
-	; подкл. 1 стр. в #4000
+	; Switch page 1 to #4000
 	ld	a,(page1)
 	out	(PAGE_1),a
-	; распаковать 2-ю часть
-	ld	hl,0C000h		; откуда
-	ld	de,4000h		; куда
+	; Decompress 2nd part
+	ld	hl,0C000h		; from where
+	ld	de,4000h		; to where
 	call	dehrust
 	;------------------------- 3 -----------------------------------
-	ld	hl,0C000h		; куда
-	ld	de,endpart-part3	; длина блока
+	ld	hl,0C000h		; where
+	ld	de,endpart-part3	; block size
 	ld	a,(hFile)
-	ld	c,13h			; чтение файла
+	ld	c,13h			; read file
 	rst	10h
 	jp	c,disk_error
-	; распаковать 3-ю часть (остаток файла)
-	ld	hl,0C000h		; откуда
-	ld	de,8000h		; куда
+	; Decompress 3rd part (file remainder)
+	ld	hl,0C000h		; from where
+	ld	de,8000h		; to where
 	call	dehrust
 
-	; закрыть файл
+	; Close file
 	ld	a,(hFile)
 	ld	c,12h
 	rst	10h
-	; освоб. врем. страницу
+	; Free temporary memory page
 	ld	a,(tmp_page)
 	ld	c,3Eh
 	rst	10h
 	di
-	; подкл. страницы
+	; Switch memory pages
 	ld	a,(page0)
-	out	(PAGE_0),a		; блок 0100..3FFF
+	out	(PAGE_0),a		; block 0100..3FFF
 	ld	a,(page1)
-	out	(PAGE_1),a		; блок 4000..7FFF
+	out	(PAGE_1),a		; block 4000..7FFF
 	ld	a,(page2)
-	out	(PAGE_3),a		; страницу в 0C000h
-	; скопир. хэндлы страниц
+	out	(PAGE_3),a		; pages in 0C000h
+	; Copy DSS page memory pages
 	ld	hl,_dss
-	ld	de,dss_page		; адрес ячейки page_dss в "ccc.bin"
+	ld	de,dss_page		; address of cell page_dss in "ccc.bin"
 	ld	bc,9
 	ldir
-	; перейти на программу
-L0080:	ld	hl,0			; адрес ком. строки
+	; Transfer to program
+L0080:	ld	hl,0			; command string address
 	jp	0100h
 
 
 disk_error:
 	ld	a,(block)
-	ld	c,3Eh			; освоб. выдел. блок памяти
+	ld	c,3Eh			; free allocated memory block
 	rst	10h
 	ld	a,(hFile)
-	ld	c,12h			; закрыть файл
+	ld	c,12h			; close file
 	rst	10h
 	ld	hl,load_err
 	ld	c,5Ch
@@ -175,15 +175,15 @@ disk_error:
 	rst	10h			; exit
 
 
-hFile:	db	0			; дескр. файла
+hFile:	db	0			; descriptor file
 
 tmp_page:
-	db	-1			; страница для упак. частей файла
+	db	-1			; memory pages for unpacking file
 
 
-; порядок ячеек не менять
-_dss:	db	-1			; сохр. номер страницы Estex
-block:	db	-1			; дескриптор выдел. блока памяти
+; Order cell should not change
+_dss:	db	-1			; save memory pages Estex
+block:	db	-1			; descriptor allocated memory block
 	;
 page0:	db	-1
 page1:	db	-1
@@ -208,14 +208,14 @@ load_err:
 
 
 
-; Формат упак. файла:
-;  +0 (word) "HR" - сигнатура
-;  +2 (word) - длина исходного файла
-;  +4 (word) - длина упакованного файла
+; Format of packed file:
+;  +0 (word) "HR" - signature
+;  +2 (word) - source file length
+;  +4 (word) - packed file length
 ;
-; Распаковщик
-;  hl=откуда
-;  de=куда
+; Decompressor
+;  hl=from where
+;  de=to where
 dehrust:
 	ld	ix,-12
 	add	ix,sp
@@ -398,12 +398,12 @@ loc35:	pop	de
 	jr	nc,loc22
 	ret
 
-; конец загрузчика
+; End of bootloader
 end_loader:
 
 
 
-; Упакованные части программы
+; Packed program parts
 part1:
 	incbin "cc1"
 part2:

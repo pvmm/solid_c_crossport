@@ -1,6 +1,6 @@
 ;[]===================================================================[]
-;  Получить данные из стека, вывести строку (символ)
-;  на экран или в вых. файл.
+;  Get data from stack, output string (symbol)
+;  on screen or in output file.
 ;
 fprintf:
 	pop	bc
@@ -19,42 +19,42 @@ A4B7B:	ld	a,(hl)
 	or	a
 	jp	z,A4C70			; false
 	ld	a,(A4C70+1)
-	cp	"C"			; символ
+	cp	"C"			; symbol
 	jr	z,A4BAB
-	cp	"N"			; число
+	cp	"N"			; number
 	jr	z,A4BB5
-	cp	"S"			; строка
+	cp	"S"			; string
 	jr	z,A4BCA
-	cp	"X"			; hex-число (дес. формат вывода)
+	cp	"X"			; hex-number (decimal format output)
 	jr	z,A4BDC
-	cp	"Y"			; вывод строки и колонки с ошибкой
+	cp	"Y"			; output string and column with error
 	jr	z,A4BF0
-	; default (большие буквы, не стоящие первыми)
+	; default (larger letters, not starting with first)
 	jp	A4C5B
 	;
-	; "C" вывод символа
+	; "C" output character
 A4BAB:	ld	a,(ix+0)
 	inc	ix
 	inc	ix
 	jp	A4C73
-	; "N" вывод числа
+	; "N" output number
 A4BB5:	ld	l,(ix+0)
 	inc	ix
 	ld	h,(ix+0)
 	inc	ix
 	push	ix
-	call	A49BF			; вывод в файл чисел в десят. формате
-	call	A05C0			; вывод строки
+	call	A49BF			; output to file number in decimal format
+	call	A05C0			; output string
 	jp	A4C78
-	; "S" вывод строки
+	; "S" output string
 A4BCA:	ld	l,(ix+0)
 	inc	ix
 	ld	h,(ix+0)
 	inc	ix
 	push	ix
-	call	A05C0			; вывод строки
+	call	A05C0			; output string
 	jp	A4C78
-	; "X" вывод hex-числа (в дес.формате)
+	; "X" output hex-number (in decimal format)
 A4BDC:	ld	c,(ix+0)
 	ld	b,(ix+1)
 	ld	l,(ix+2)
@@ -63,7 +63,7 @@ A4BDC:	ld	c,(ix+0)
 	add	ix,de
 	ex	de,hl
 	jr	A4C11
-	; "Y" вывод номеров строки и колонки (также имени include-файла)
+	; "Y" output number of string and column (also names of include-files)
 A4BF0:	ld	l,(ix+0)
 	inc	ix
 	ld	h,(ix+0)
@@ -84,72 +84,71 @@ A4BF0:	ld	l,(ix+0)
 	inc	hl
 	ld	h,(hl)
 	ld	l,a
-	ld	c,(hl)			; bc=номер строки
+	ld	c,(hl)			; bc=number of string
 	inc	hl
 	ld	b,(hl)
 	inc	hl
-	ld	e,(hl)			; de=номер колонки
+	ld	e,(hl)			; de=number of column
 	inc	hl
 	ld	d,(hl)
 A4C11:	push	ix
-	ld	hl,(index)		; индекс имени (дескриптора) файла
+	ld	hl,(index)		; index name (descriptor) of file
 	push	de
 	push	bc
 	ld	a,l
 	or	h
-	jr	z,A4C2D			; имеем начальный .C файл
+	jr	z,A4C2D			; we have initial .C file
 	ld	a,"["
-	call	A05C6			; вывод "a"
+	call	A05C6			; output "a"
 	ld	hl,(D79E9)
-	call	A05C0			; вывод имени include-файла
+	call	A05C0			; output name of include-file
 	ld	hl,T4DE4		; "] "
-	call	A05C0			; вывод строки
+	call	A05C0			; output string
 A4C2D:	ld	hl,A4DE7		; "line "
-	call	A05C0			; вывод строки
+	call	A05C0			; output string
 	pop	hl
-	call	A49BF			; вывод номера строки (дес.формат)
-	call	A05C0			; вывод строки
+	call	A49BF			; output number of string (dec. format)
+	call	A05C0			; output string
 	ld	hl,A4DED		; " column "
-	call	A05C0			; вывод строки
+	call	A05C0			; output string
 	pop	hl
-	call	A49BF			; вывод номера колонки (дес.формат)
-	call	A05C0			; вывод строки
+	call	A49BF			; output number of column (dec. format)
+	call	A05C0			; output string
 	ld	hl,A4DF6		; ": "
-	call	A05C0			; вывод строки
+	call	A05C0			; output string
 	ld	a,true
-	ld	(D76C7),a		; уст. флаг наличия ошибок компиляции
+	ld	(D76C7),a		; set flag detection of error compilation
 	ld	(D78E1),a
-	call	A4F3D			; ++errors  с отслеж. "too many errors"
+	call	A4F3D			; ++errors with check "too many errors"
 	jr	A4C78
-	; default (большие буквы, не стоящие первыми)
+	; default (larger letters, not starting with first)
 A4C5B:	sub	"A"
-	ld	l,a			; индекс буквы
+	ld	l,a			; index letter
 	ld	h,0
 	add	hl,hl
-	ld	bc,T4C8C		; таблица адресов строк
+	ld	bc,T4C8C		; table address string
 	add	hl,bc
 	ld	a,(hl)
 	inc	hl
 	ld	h,(hl)
-	ld	l,a			; hl=адрес строки
+	ld	l,a			; hl= address string
 	push	ix
-	call	A05C0			; вывод строки
+	call	A05C0			; output string
 	jr	A4C78
-	; вывод маленьких букв
+	; output smaller letters
 A4C70:	ld	a," "
 A4C73:	push	ix
-	call	A05C6			; вывод "a"
+	call	A05C6			; output "a"
 A4C78:	pop	ix
 	pop	hl
-	jp	A4B7B			; получить след. символ
+	jp	A4B7B			; get next symbol
 	;
 A4C7E:	pop	bc
-	ld	hl,T4DF9		; новая строка
-	call	A05C0			; вывод строки
-	;call	test_Esc		; тест на Esc
+	ld	hl,T4DF9		; new string
+	call	A05C0			; output string
+	;call	test_Esc		; test for Esc
 	ld	hl,0
 	ret
-
 
 
 
@@ -169,8 +168,8 @@ T1025:	db	"XBparameter list",0
 T11C6:	db	"X#include too nested",0
 
 T1313:	db	"Xerror: ",0
-T131C:	db	"$T",0Ah,0		; оптимизация "time"
-T1320:	db	"$S",0Ah,0		; оптимизация "speed"
+T131C:	db	"$T",0Ah,0		; optimization "time"
+T1320:	db	"$S",0Ah,0		; optimization "speed"
 	db	"pragma",0
 
 T13A2:	db	"XB#???",0
@@ -311,12 +310,12 @@ T3300:	db	"member name",0
 T330C:	db	'")"',0
 T3310:	db	'"]"',0
 T3314:	db	"bad assignment",0
-T3323:	db	'bad conditional expression (missing "?")',0 ; плохое условное выражение
+T3323:	db	'bad conditional expression (missing "?")',0 ; false conditional expression
 T334C:	db	'":"',0
 T3350:	db	"precedence error",0
 T3361:	db	"norel",0
 
-T36EC:	db	"Yuseless expression",0		; бесполезное выражение
+T36EC:	db	"Yuseless expression",0		; useless expression
 
 T3881:	db	"YF",0
 T3884:	db	"YA",0
@@ -328,7 +327,7 @@ T3906:	db	'X"]" E',0
 T3C8A:	db	"XD storage class",0
 T3C9B:	db	"XD type specifier",0
 
-T3CC5:	db	"XQlong/float/double U",0	; "Q","U" - задано "не поддерж."
+T3CC5:	db	"XQlong/float/double U",0	; "Q","U" - note "not supported"
 
 T3D74:	db	"XO",0
 T3D77:	db	"XT",0
@@ -366,7 +365,7 @@ T4A78:	db	"tn",0
 
 
 
-; Таблица адресов строк
+; Table of error message strings
 T4C8C:	dw	L4CC0			; A
 	dw	L4CD4			; B
 	dw	L4CD9			; C
@@ -427,10 +426,10 @@ T4DE4:	db	"] ",0
 A4DE7:	db	"line ",0
 A4DED:	db	" column ",0
 A4DF6:	db	": ",0
-T4DF9:	db	0Ah,0			; новая строка
+T4DF9:	db	0Ah,0			; new line
 
 
-T4E06:	db	"Ytype mismatch",0	; не совместимость типов
+T4E06:	db	"Ytype mismatch",0	; type incompatibility
 
 T4E9F:	db	"pool",9,9,"N/N",0
 T4EA9:	db	"symbol table",9,"N/N",0
